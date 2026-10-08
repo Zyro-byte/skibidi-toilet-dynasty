@@ -1,0 +1,36 @@
+name: Troubleshoot GitHub Pages
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/troubleshoot-pages.yml'
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check repository and published files
+        uses: actions/checkout@v4
+      - name: Inspect files
+        run: |
+          test -s index.html
+          test "$(cat CNAME)" = "skibidi.devs.surf"
+          test -f .nojekyll
+          echo "Repository files OK"
+      - name: Check public DNS
+        run: |
+          echo "CNAME lookup:"
+          dig +noall +answer skibidi.devs.surf CNAME
+          echo "A lookup:"
+          dig +noall +answer skibidi.devs.surf A
+          echo "AAAA lookup:"
+          dig +noall +answer skibidi.devs.surf AAAA
+          echo "Authoritative nameservers:"
+          dig +short NS devs.surf
+      - name: Check HTTP and HTTPS
+        run: |
+          for url in http://skibidi.devs.surf/ https://skibidi.devs.surf/ https://zyro-byte.github.io/skibidi-toilet-dynasty/; do
+            echo "==== $url ===="
+            curl -IL --max-time 20 -sS -o /dev/null -w 'HTTP %{http_code} | remote %{remote_ip} | redirect %{redirect_url} | SSL verify %{ssl_verify_result}\n' "$url" || true
+          done
